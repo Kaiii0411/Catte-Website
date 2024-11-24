@@ -1,13 +1,13 @@
 <template>
-    <div style="margin-bottom: 10px;">
-    <el-form :model="member" label-width="auto" style="max-width: 600px">
-        <el-form-item label="Name">
-            <el-input v-model="member.name" />
-        </el-form-item>
-        <el-form-item>
-            <el-button type="primary" @click="addMember()">Add</el-button>
-        </el-form-item>
-    </el-form>
+    <div class="card-container" style="margin-bottom: 10px;">
+        <el-form :model="member" label-width="auto" style="max-width: 600px">
+            <el-form-item label="Name">
+                <el-input v-model="member.name" />
+            </el-form-item>
+            <el-form-item style="float: right;">
+                <el-button type="primary" @click="addMember()">Add</el-button>
+            </el-form-item>
+        </el-form>
     </div>
     <div class="card-container">
         <el-space wrap class="card-space" justify="center">
