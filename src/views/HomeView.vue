@@ -119,31 +119,111 @@
             <div v-if="members.length === 0" class="empty-state">
               <p>📊 No data yet.</p>
             </div>
-            <div v-else class="table-wrap">
-              <el-table :data="sortedMembers" class="catte-table" border>
-                <el-table-column label="Rank" width="70" align="center">
-                  <template #default="scope">
-                    <span class="rank-badge">
-                      <template v-if="scope.$index === 0">🥇</template>
-                      <template v-else-if="scope.$index === 1">🥈</template>
-                      <template v-else-if="scope.$index === 2">🥉</template>
-                      <template v-else>{{ scope.$index + 1 }}</template>
-                    </span>
-                  </template>
-                </el-table-column>
-                <el-table-column label="Name" prop="name" />
-                <el-table-column label="Coins" width="120" align="center">
-                  <template #default="scope">
-                    <span class="coins-value-sm">{{ scope.row.coins + 10 }}</span>
-                  </template>
-                </el-table-column>
-              </el-table>
+            <div v-else class="total-wrap">
+
+              <div class="stake-row">
+                <span class="stake-label">Initial Stake per player</span>
+                <el-input-number v-model="initialStake" :min="0" :step="1" size="small" style="width:130px" />
+              </div>
+
+              <div class="table-wrap">
+                <el-table :data="sortedMembers" class="catte-table total-table" border>
+                  <el-table-column label="Rank" width="60" align="center">
+                    <template #default="scope">
+                      <span class="rank-badge">
+                        <template v-if="scope.$index === 0">🥇</template>
+                        <template v-else-if="scope.$index === 1">🥈</template>
+                        <template v-else-if="scope.$index === 2">🥉</template>
+                        <template v-else>{{ scope.$index + 1 }}</template>
+                      </span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Name" prop="name" />
+                  <el-table-column label="Expected" width="105" align="center">
+                    <template #default="scope">
+                      <span style="font-weight:600;color:#94a3b8">{{ scope.row.finalBalance }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Actual" width="145" align="center">
+                    <template #default="scope">
+                      <el-input-number
+                        :model-value="actualCounts[scope.row.id] !== undefined ? actualCounts[scope.row.id] : scope.row.finalBalance"
+                        @update:model-value="val => actualCounts[scope.row.id] = val"
+                        :step="1"
+                        size="small"
+                        style="width:120px"
+                      />
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Diff" width="85" align="center">
+                    <template #default="scope">
+                      <span :class="scope.row.diff > 0 ? 'coins-pos' : scope.row.diff < 0 ? 'coins-neg' : 'diff-zero'"
+                            style="font-weight:700">
+                        {{ scope.row.diff > 0 ? '+' + scope.row.diff : scope.row.diff === 0 ? '—' : scope.row.diff }}
+                      </span>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+
+              <div class="settle-area">
+                <button class="settle-btn" @click="showSettlement = true">💰 Settle Up</button>
+              </div>
+
             </div>
           </div>
         </el-tab-pane>
 
       </el-tabs>
     </main>
+
+    <!-- ── Settlement Dialog ── -->
+    <el-dialog v-model="showSettlement" title="💰 Settlement" width="520px">
+      <div class="settlement-body">
+
+        <!-- Surplus / Deficit summary -->
+        <div v-if="surplusMembers.length > 0 || deficitMembers.length > 0" class="sd-summary">
+          <div v-if="surplusMembers.length > 0" class="sd-group">
+            <div class="sd-group-label surplus-label">📈 Surplus</div>
+            <div v-for="m in surplusMembers" :key="m.id" class="sd-item">
+              <span class="sd-name">{{ m.name }}</span>
+              <span class="coins-pos sd-amount">+{{ m.diff }}</span>
+            </div>
+          </div>
+          <div v-if="deficitMembers.length > 0" class="sd-group">
+            <div class="sd-group-label deficit-label">📉 Deficit</div>
+            <div v-for="m in deficitMembers" :key="m.id" class="sd-item">
+              <span class="sd-name">{{ m.name }}</span>
+              <span class="coins-neg sd-amount">{{ m.diff }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="settlementTransactions.length > 0" class="sd-divider"></div>
+
+        <!-- Case: no diffs at all -->
+        <div v-if="surplusMembers.length === 0 && deficitMembers.length === 0" class="settlement-empty">
+          <p>🎉 Everyone is balanced! No payments needed.</p>
+        </div>
+
+        <!-- Transfers -->
+        <div v-if="settlementTransactions.length > 0">
+          <div class="tx-section-label">Transfers</div>
+          <div v-for="(tx, i) in settlementTransactions" :key="i" class="tx-row">
+            <span class="tx-from">{{ tx.from }}</span>
+            <span class="tx-arrow">gives</span>
+            <span class="tx-to">{{ tx.to }}</span>
+            <span class="tx-amount">{{ tx.amount }} 🪙</span>
+          </div>
+          <div class="settlement-check">
+            <span :class="isBalanced ? 'check-ok' : 'check-warn'">
+              {{ isBalanced ? '✅ All balanced — sum is zero' : '⚠️ Sum is not zero, check your data' }}
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </el-dialog>
 
   </div>
 </template>
@@ -403,6 +483,181 @@
   font-size: 1rem;
   color: #f0a500;
 }
+
+/* ── Total Tab Layout ── */
+.total-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.stake-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 800px;
+  justify-content: flex-end;
+}
+
+.stake-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* ── Settle Button ── */
+.settle-area {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.settle-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none;
+  color: white;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 12px 36px;
+  border-radius: 12px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+  transition: all 0.25s ease;
+}
+
+.settle-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 32px rgba(99, 102, 241, 0.55);
+}
+
+.settle-btn:active {
+  transform: translateY(0);
+}
+
+/* ── Settlement Dialog ── */
+.settlement-body {
+  padding: 4px 0;
+}
+
+.settlement-empty {
+  text-align: center;
+  padding: 24px;
+  color: #64748b;
+  font-size: 1rem;
+}
+
+.tx-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.tx-from {
+  font-weight: 700;
+  color: #4ade80;  /* giver = surplus = green */
+  font-size: 0.95rem;
+}
+
+.tx-arrow {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.tx-to {
+  font-weight: 700;
+  color: #f87171;  /* receiver = deficit = red */
+  font-size: 0.95rem;
+}
+
+.tx-amount {
+  margin-left: auto;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #f0a500;
+}
+
+.settlement-check {
+  margin-top: 16px;
+  text-align: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  font-size: 0.9rem;
+}
+
+.check-ok   { color: #4ade80; font-weight: 600; }
+.check-warn { color: #fbbf24; font-weight: 600; }
+
+/* ── Total Table (wider) ── */
+.total-table { max-width: 800px !important; }
+
+/* ── Diff cell ── */
+.diff-zero { color: #475569; font-weight: 600; }
+
+/* ── Settlement surplus/deficit summary ── */
+.sd-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.sd-group {
+  flex: 1;
+  min-width: 180px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.sd-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 8px;
+}
+
+.surplus-label { color: #4ade80; }
+.deficit-label { color: #f87171; }
+
+.sd-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.9rem;
+}
+
+.sd-name { color: #e2e8f0; font-weight: 500; }
+.sd-amount { font-weight: 700; font-size: 0.9rem; }
+
+.sd-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin: 16px 0;
+}
+
+.tx-section-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  margin-bottom: 10px;
+}
 </style>
 
 <script type="text/javascript">
@@ -411,6 +666,9 @@
         data() {
             return {
                 activeTab: 'members',
+                initialStake: 10,
+                showSettlement: false,
+                actualCounts: {},
                 members: [],
                 member: {
                     id: 0,
@@ -440,8 +698,61 @@
         },
 
         computed: {
+            // Enrich each member with finalBalance, actual entered, and diff
+            memberDiffs() {
+                return this.members.map(m => {
+                    const finalBalance = m.coins + this.initialStake;
+                    const actual = (this.actualCounts[m.id] !== undefined)
+                        ? this.actualCounts[m.id]
+                        : finalBalance;
+                    const diff = actual - finalBalance;
+                    return { ...m, finalBalance, actual, diff };
+                });
+            },
+
             sortedMembers() {
-                return [...this.members].sort((a, b) => b.coins - a.coins);
+                return [...this.memberDiffs].sort((a, b) => b.finalBalance - a.finalBalance);
+            },
+
+            surplusMembers() {
+                return this.memberDiffs.filter(m => m.diff > 0);
+            },
+
+            deficitMembers() {
+                return this.memberDiffs.filter(m => m.diff < 0);
+            },
+
+            // Greedy: surplus people GIVE to deficit people
+            settlementTransactions() {
+                const givers    = this.surplusMembers.map(m => ({ name: m.name, balance: m.diff }));
+                const receivers = this.deficitMembers.map(m => ({ name: m.name, balance: m.diff }));
+
+                givers.sort((a, b) => b.balance - a.balance);
+                receivers.sort((a, b) => a.balance - b.balance);
+
+                const transactions = [];
+                let i = 0, j = 0;
+
+                while (i < receivers.length && j < givers.length) {
+                    const receiver = receivers[i];
+                    const giver    = givers[j];
+                    const amount   = Math.min(-receiver.balance, giver.balance);
+
+                    transactions.push({ from: giver.name, to: receiver.name, amount });
+
+                    receiver.balance += amount;
+                    giver.balance    -= amount;
+
+                    if (Math.abs(receiver.balance) < 0.001) i++;
+                    if (Math.abs(giver.balance)    < 0.001) j++;
+                }
+
+                return transactions;
+            },
+
+            isBalanced() {
+                const total = this.memberDiffs.reduce((sum, m) => sum + m.diff, 0);
+                return Math.abs(total) < 0.001;
             }
         },
 
@@ -450,6 +761,8 @@
             const savedLogs    = localStorage.getItem('catte-logs');
             const savedNames   = localStorage.getItem('catte-names');
 
+            const savedStake   = localStorage.getItem('catte-stake');
+            if (savedStake)   this.initialStake = JSON.parse(savedStake);
             if (savedMembers) this.members = JSON.parse(savedMembers);
             if (savedLogs)    this.logs    = JSON.parse(savedLogs);
             if (savedNames) {
@@ -480,6 +793,9 @@
                 handler(val) {
                     localStorage.setItem('catte-names', JSON.stringify(val));
                 }
+            },
+            initialStake(val) {
+                localStorage.setItem('catte-stake', JSON.stringify(val));
             }
         },
 
@@ -577,6 +893,7 @@
                     .then(() => {
                         this.members = [];
                         this.logs = [];
+                        this.actualCounts = {};
                         this.names.forEach(n => n.inRound = false);
                         this.$message({
                             type: 'success',
