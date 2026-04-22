@@ -17,6 +17,12 @@
         <!-- ── Tab: Members ── -->
         <el-tab-pane label="Members" name="members">
           <div class="tab-content">
+
+            <div class="stake-row" style="justify-content: center; margin-bottom: 16px;">
+              <span class="stake-label">Initial Stake per player</span>
+              <el-input-number v-model="initialStake" :min="0" :step="1" size="small" style="width:130px" />
+            </div>
+
             <div class="table-wrap">
               <el-table :data="names" class="catte-table" border>
                 <el-table-column label="Name" prop="name" />
@@ -120,11 +126,6 @@
               <p>📊 No data yet.</p>
             </div>
             <div v-else class="total-wrap">
-
-              <div class="stake-row">
-                <span class="stake-label">Initial Stake per player</span>
-                <el-input-number v-model="initialStake" :min="0" :step="1" size="small" style="width:130px" />
-              </div>
 
               <div class="table-wrap">
                 <el-table :data="sortedMembers" class="catte-table total-table" border>
@@ -565,7 +566,7 @@
 
 .tx-from {
   font-weight: 700;
-  color: #4ade80;  /* giver = surplus = green */
+  color: #f87171;  /* giver = deficit = red */
   font-size: 0.95rem;
 }
 
@@ -577,7 +578,7 @@
 
 .tx-to {
   font-weight: 700;
-  color: #f87171;  /* receiver = deficit = red */
+  color: #4ade80;  /* receiver = surplus = green */
   font-size: 0.95rem;
 }
 
@@ -701,7 +702,8 @@
             // Enrich each member with finalBalance, actual entered, and diff
             memberDiffs() {
                 return this.members.map(m => {
-                    const finalBalance = m.coins + this.initialStake;
+                    // coins now includes the initial stake directly
+                    const finalBalance = m.coins;
                     const actual = (this.actualCounts[m.id] !== undefined)
                         ? this.actualCounts[m.id]
                         : finalBalance;
@@ -722,29 +724,30 @@
                 return this.memberDiffs.filter(m => m.diff < 0);
             },
 
-            // Greedy: surplus people GIVE to deficit people
+            // Deficit (diff < 0) means they owe points -> GIVERS
+            // Surplus (diff > 0) means they earned points -> RECEIVERS
             settlementTransactions() {
-                const givers    = this.surplusMembers.map(m => ({ name: m.name, balance: m.diff }));
-                const receivers = this.deficitMembers.map(m => ({ name: m.name, balance: m.diff }));
+                const givers    = this.deficitMembers.map(m => ({ name: m.name, balance: -m.diff })); // Make positive for math
+                const receivers = this.surplusMembers.map(m => ({ name: m.name, balance: m.diff }));
 
                 givers.sort((a, b) => b.balance - a.balance);
-                receivers.sort((a, b) => a.balance - b.balance);
+                receivers.sort((a, b) => b.balance - a.balance);
 
                 const transactions = [];
                 let i = 0, j = 0;
 
-                while (i < receivers.length && j < givers.length) {
-                    const receiver = receivers[i];
-                    const giver    = givers[j];
-                    const amount   = Math.min(-receiver.balance, giver.balance);
+                while (i < givers.length && j < receivers.length) {
+                    const giver    = givers[i];
+                    const receiver = receivers[j];
+                    const amount   = Math.min(giver.balance, receiver.balance);
 
                     transactions.push({ from: giver.name, to: receiver.name, amount });
 
-                    receiver.balance += amount;
                     giver.balance    -= amount;
+                    receiver.balance -= amount;
 
-                    if (Math.abs(receiver.balance) < 0.001) i++;
-                    if (Math.abs(giver.balance)    < 0.001) j++;
+                    if (Math.abs(giver.balance)    < 0.001) i++;
+                    if (Math.abs(receiver.balance) < 0.001) j++;
                 }
 
                 return transactions;
@@ -829,6 +832,8 @@
                 newMember.id = this.generateIdFromCurrentDateTime();  
                 newMember.name = name;  
                 newMember.nameId = id;
+                newMember.initialStake = this.initialStake;
+                newMember.coins = this.initialStake; // Start with the stake immediately
 
                 this.members.push(newMember);
 
