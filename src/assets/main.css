@@ -1,35 +1,63 @@
-@import './base.css';
-
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+/* ================================================
+   Global Reset & Base
+================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+html, body, #app {
+  height: 100%;
+  min-height: 100vh;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+body {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0d1117;
+  color: #e2e8f0;
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
+/* ================================================
+   Element Plus Dark Mode Overrides
+================================================ */
+html.dark {
+  --el-bg-color: #161b22;
+  --el-bg-color-page: #0d1117;
+  --el-bg-color-overlay: #1e2430;
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
+  --el-color-primary: #818cf8;
+  --el-color-primary-light-3: rgba(129, 140, 248, 0.3);
+  --el-color-primary-light-5: rgba(129, 140, 248, 0.5);
+  --el-color-primary-light-7: rgba(129, 140, 248, 0.7);
+  --el-color-primary-light-8: rgba(129, 140, 248, 0.15);
+  --el-color-primary-light-9: rgba(129, 140, 248, 0.08);
+  --el-color-primary-dark-2: #6366f1;
+
+  --el-border-color: rgba(255, 255, 255, 0.08);
+  --el-border-color-light: rgba(255, 255, 255, 0.05);
+  --el-border-color-lighter: rgba(255, 255, 255, 0.04);
+
+  --el-text-color-primary: #e2e8f0;
+  --el-text-color-regular: #94a3b8;
+  --el-text-color-secondary: #64748b;
+
+  --el-fill-color: rgba(255, 255, 255, 0.04);
+  --el-fill-color-light: rgba(255, 255, 255, 0.03);
+  --el-fill-color-blank: #161b22;
+
+  --el-mask-color: rgba(0, 0, 0, 0.7);
+  --el-box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --el-box-shadow-light: 0 4px 16px rgba(0, 0, 0, 0.3);
+
+  /* Table */
+  --el-table-bg-color: #161b22;
+  --el-table-tr-bg-color: #161b22;
+  --el-table-header-bg-color: #1e2430;
+  --el-table-row-hover-bg-color: rgba(129, 140, 248, 0.08);
+  --el-table-border-color: rgba(255, 255, 255, 0.07);
+  --el-table-header-text-color: #94a3b8;
+
+  /* Tabs */
+  --el-tabs-header-height: 44px;
 }
