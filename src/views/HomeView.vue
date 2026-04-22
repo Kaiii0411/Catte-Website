@@ -128,8 +128,8 @@
             <div v-else class="total-wrap">
 
               <div class="table-wrap">
-                <el-table :data="sortedMembers" class="catte-table total-table" border>
-                  <el-table-column label="Rank" width="60" align="center">
+                <el-table :data="sortedMembers" class="catte-table total-table" border style="width: 100%">
+                  <el-table-column label="" width="45" align="center" class-name="rank-col">
                     <template #default="scope">
                       <span class="rank-badge">
                         <template v-if="scope.$index === 0">🥇</template>
@@ -139,24 +139,24 @@
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column label="Name" prop="name" />
-                  <el-table-column label="Expected" width="105" align="center">
+                  <el-table-column label="Name" prop="name" min-width="75" />
+                  <el-table-column label="Exp." width="55" align="center">
                     <template #default="scope">
                       <span style="font-weight:600;color:#94a3b8">{{ scope.row.finalBalance }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column label="Actual" width="145" align="center">
+                  <el-table-column label="Actual" width="105" align="center">
                     <template #default="scope">
                       <el-input-number
                         :model-value="actualCounts[scope.row.id] !== undefined ? actualCounts[scope.row.id] : scope.row.finalBalance"
                         @update:model-value="val => actualCounts[scope.row.id] = val"
                         :step="1"
                         size="small"
-                        style="width:120px"
+                        style="width:80px"
                       />
                     </template>
                   </el-table-column>
-                  <el-table-column label="Diff" width="85" align="center">
+                  <el-table-column label="Diff" width="60" align="center">
                     <template #default="scope">
                       <span :class="scope.row.diff > 0 ? 'coins-pos' : scope.row.diff < 0 ? 'coins-neg' : 'diff-zero'"
                             style="font-weight:700">
@@ -179,7 +179,7 @@
     </main>
 
     <!-- ── Settlement Dialog ── -->
-    <el-dialog v-model="showSettlement" title="💰 Settlement" width="520px">
+    <el-dialog v-model="showSettlement" title="💰 Settlement" width="min(520px, 95vw)">
       <div class="settlement-body">
 
         <!-- Surplus / Deficit summary -->
@@ -477,6 +477,12 @@
 /* ── Total / Rank ── */
 .rank-badge {
   font-size: 1.15rem;
+}
+
+:deep(.rank-col .cell) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  text-overflow: clip !important;
 }
 
 .coins-value-sm {
