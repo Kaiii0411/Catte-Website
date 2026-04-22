@@ -132,23 +132,57 @@
                 },
                 logs: [],
                 names: [
-                    { id: "N1", name: "Nghĩa", isInRound: false},
-                    { id: "T2", name: "C Tiền 🌸", isInRound: false },
-                    { id: "H3", name: "C Hương 🌻", isInRound: false },
-                    { id: "L4", name: "C Linh 🌷", isInRound: false },
-                    { id: "H5", name: "A Hiếu", isInRound: false },
-                    { id: "K6", name: "A Kiệt", isInRound: false },
-                    { id: "T7", name: "A Tân", isInRound: false },
-                    { id: "V8", name: "A Vinh", isInRound: false },
-                    { id: "V9", name: "A Vương", isInRound: false },
-                    { id: "T10", name: "C Thy", isInRound: false },
-                    { id: "T11", name: "A Thái", isInRound: false }
+                    { id: "N1", name: "Nghĩa", inRound: false},
+                    { id: "T2", name: "C Tiền 🌸", inRound: false },
+                    { id: "H3", name: "C Hương 🌻", inRound: false },
+                    { id: "L4", name: "C Linh 🌷", inRound: false },
+                    { id: "H5", name: "A Hiếu", inRound: false },
+                    { id: "K6", name: "A Kiệt", inRound: false },
+                    { id: "T7", name: "A Tân", inRound: false },
+                    { id: "V8", name: "A Vinh", inRound: false },
+                    { id: "V9", name: "A Vương", inRound: false },
+                    { id: "T10", name: "C Thy", inRound: false },
+                    { id: "T11", name: "A Thái", inRound: false }
                 ]
             }   
         },
 
         created() {
+            const savedMembers = localStorage.getItem('catte-members');
+            const savedLogs    = localStorage.getItem('catte-logs');
+            const savedNames   = localStorage.getItem('catte-names');
 
+            if (savedMembers) this.members = JSON.parse(savedMembers);
+            if (savedLogs)    this.logs    = JSON.parse(savedLogs);
+            if (savedNames) {
+                const parsed = JSON.parse(savedNames);
+                // Merge saved inRound state back into the default names list
+                this.names = this.names.map(n => {
+                    const saved = parsed.find(s => s.id === n.id);
+                    return saved ? { ...n, inRound: saved.inRound } : n;
+                });
+            }
+        },
+
+        watch: {
+            members: {
+                deep: true,
+                handler(val) {
+                    localStorage.setItem('catte-members', JSON.stringify(val));
+                }
+            },
+            logs: {
+                deep: true,
+                handler(val) {
+                    localStorage.setItem('catte-logs', JSON.stringify(val));
+                }
+            },
+            names: {
+                deep: true,
+                handler(val) {
+                    localStorage.setItem('catte-names', JSON.stringify(val));
+                }
+            }
         },
 
         methods: {
