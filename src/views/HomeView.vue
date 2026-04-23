@@ -128,7 +128,7 @@
             <div v-else class="total-wrap">
 
               <div class="table-wrap">
-                <el-table :data="sortedMembers" class="catte-table total-table" border style="width: 100%">
+                <el-table :data="sortedMembers" class="catte-table total-table" border style="width: 100%" show-summary :summary-method="getSummaries">
                   <el-table-column label="" width="45" align="center" class-name="rank-col">
                     <template #default="scope">
                       <span class="rank-badge">
@@ -185,14 +185,14 @@
         <!-- Surplus / Deficit summary -->
         <div v-if="surplusMembers.length > 0 || deficitMembers.length > 0" class="sd-summary">
           <div v-if="surplusMembers.length > 0" class="sd-group">
-            <div class="sd-group-label surplus-label">📈 Surplus</div>
+            <div class="sd-group-label surplus-label">📈 Surplus (Total: +{{ totalSurplus }})</div>
             <div v-for="m in surplusMembers" :key="m.id" class="sd-item">
               <span class="sd-name">{{ m.name }}</span>
               <span class="coins-pos sd-amount">+{{ m.diff }}</span>
             </div>
           </div>
           <div v-if="deficitMembers.length > 0" class="sd-group">
-            <div class="sd-group-label deficit-label">📉 Deficit</div>
+            <div class="sd-group-label deficit-label">📉 Deficit (Total: {{ totalDeficit }})</div>
             <div v-for="m in deficitMembers" :key="m.id" class="sd-item">
               <span class="sd-name">{{ m.name }}</span>
               <span class="coins-neg sd-amount">{{ m.diff }}</span>
@@ -200,7 +200,7 @@
           </div>
         </div>
 
-        <div v-if="settlementTransactions.length > 0" class="sd-divider"></div>
+        <div v-if="settlementTransactions.transactions.length > 0 || settlementTransactions.unresolved.length > 0" class="sd-divider"></div>
 
         <!-- Case: no diffs at all -->
         <div v-if="surplusMembers.length === 0 && deficitMembers.length === 0" class="settlement-empty">
@@ -208,19 +208,32 @@
         </div>
 
         <!-- Transfers -->
-        <div v-if="settlementTransactions.length > 0">
+        <div v-if="settlementTransactions.transactions.length > 0">
           <div class="tx-section-label">Transfers</div>
-          <div v-for="(tx, i) in settlementTransactions" :key="i" class="tx-row">
+          <div v-for="(tx, i) in settlementTransactions.transactions" :key="i" class="tx-row">
             <span class="tx-from">{{ tx.from }}</span>
             <span class="tx-arrow">gives</span>
             <span class="tx-to">{{ tx.to }}</span>
             <span class="tx-amount">{{ tx.amount }} 🪙</span>
           </div>
-          <div class="settlement-check">
-            <span :class="isBalanced ? 'check-ok' : 'check-warn'">
-              {{ isBalanced ? '✅ All balanced — sum is zero' : '⚠️ Sum is not zero, check your data' }}
+        </div>
+
+        <!-- Unresolved Balances -->
+        <div v-if="settlementTransactions.unresolved.length > 0">
+          <div class="tx-section-label" style="color:#fbbf24; margin-top:16px;">⚠️ Unresolved Balances</div>
+          <div v-for="(unres, i) in settlementTransactions.unresolved" :key="'unres'+i" class="tx-row" style="border-color: rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.05);">
+            <span class="sd-name" style="font-weight: 600;">{{ unres.name }}</span>
+            <span class="tx-arrow">remaining</span>
+            <span :class="unres.amount > 0 ? 'coins-pos' : 'coins-neg'" style="margin-left:auto; font-weight:800; font-size:1.05rem;">
+              {{ unres.amount > 0 ? '+' + unres.amount : unres.amount }} 🪙
             </span>
           </div>
+        </div>
+
+        <div v-if="surplusMembers.length > 0 || deficitMembers.length > 0" class="settlement-check">
+          <span :class="isBalanced ? 'check-ok' : 'check-warn'">
+            {{ isBalanced ? '✅ All balanced — sum is zero' : '⚠️ Sum is not zero, check your data' }}
+          </span>
         </div>
 
       </div>
@@ -730,6 +743,14 @@
                 return this.memberDiffs.filter(m => m.diff < 0);
             },
 
+            totalSurplus() {
+                return this.surplusMembers.reduce((sum, m) => sum + m.diff, 0);
+            },
+
+            totalDeficit() {
+                return this.deficitMembers.reduce((sum, m) => sum + m.diff, 0);
+            },
+
             // Deficit (diff < 0) means they owe points -> GIVERS
             // Surplus (diff > 0) means they earned points -> RECEIVERS
             settlementTransactions() {
@@ -756,7 +777,20 @@
                     if (Math.abs(receiver.balance) < 0.001) j++;
                 }
 
-                return transactions;
+                // Collect remaining unresolved balances
+                const unresolved = [];
+                for (let k = i; k < givers.length; k++) {
+                    if (givers[k].balance > 0.001) {
+                        unresolved.push({ name: givers[k].name, amount: -givers[k].balance });
+                    }
+                }
+                for (let k = j; k < receivers.length; k++) {
+                    if (receivers[k].balance > 0.001) {
+                        unresolved.push({ name: receivers[k].name, amount: receivers[k].balance });
+                    }
+                }
+
+                return { transactions, unresolved };
             },
 
             isBalanced() {
@@ -857,6 +891,35 @@
                     type: 'success',
                     message: `${name} has been added to the round.`,
                 });
+            },
+
+            getSummaries(param) {
+                const { columns, data } = param;
+                const sums = [];
+                columns.forEach((column, index) => {
+                    if (index === 0) {
+                        sums[index] = 'Sum';
+                        return;
+                    }
+                    if (index === 1) { // Name
+                        sums[index] = '';
+                        return;
+                    }
+                    if (index === 2) { // Exp
+                        sums[index] = data.reduce((prev, curr) => prev + curr.finalBalance, 0);
+                        return;
+                    }
+                    if (index === 3) { // Actual
+                        sums[index] = data.reduce((prev, curr) => prev + curr.actual, 0);
+                        return;
+                    }
+                    if (index === 4) { // Diff
+                        const diffSum = data.reduce((prev, curr) => prev + curr.diff, 0);
+                        sums[index] = diffSum > 0 ? '+' + diffSum : diffSum;
+                        return;
+                    }
+                });
+                return sums;
             },
 
             generateIdFromCurrentDateTime() {
